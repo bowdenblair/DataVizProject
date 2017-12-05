@@ -70,24 +70,40 @@
                                   var pop = popData[j].Population;
                                   
                                   if(state == popState){
-                                      d[j].population = pop;
+                                      console.log(popState + " " + state + " " + pop);
+                                      d[i].population = pop;
+                                      console.log(d[i]);
+                                      d[i].ratio = d[i].count/d[i].population*100;
                                       break;
                                   }
                               }
                           }
                           
-                    //Set input domain for color scale
-                    color.domain([
-                        d3.min(d, function(d) { return d.population/d.count; }), 
-                        d3.max(d, function(d) { return d.population/d.count; })
-                    ]);
+                    
                           
-                          console.log(color.domain());                          
+                          var minRatio = 1;
+                          var maxRatio = 0;
+                          
+                          var minCount = 0;
+                          var maxCount = 0;
+                          
+                          var minPop = 0;
+                          var maxPop = 0;
 
                           for(var i=0; i<d.length; i++){
                               var state = d[i].state;
                               var count = d[i].count;
                               var pop = d[i].population;
+                              var ratio = d[i].ratio;
+                              console.log(state + " " + pop);
+                              if(ratio >maxRatio) maxRatio = ratio;
+                              if(ratio <minRatio) minRatio = ratio;
+                              
+                              if(count >maxCount) maxCount = count;
+                              if(count <minCount) minCount = count;
+                              
+                              if(pop >maxPop) maxPop = pop;
+                              if(pop <minPop) minPop = pop;
                               
                               for(var k=0; k<json.features.length; k++){
                                   var jsonState = json.features[k].properties.NAME;
@@ -95,10 +111,29 @@
                                   if(state == jsonState){
                                       json.features[k].properties.count = count;
                                       json.features[k].properties.population = pop;
+                                      json.features[k].properties.ratio = ratio;
                                       break;
                                   }
                               }
                           }
+                          //Set input domain for color scale
+                          //
+                    
+                    color.domain([//used for the ratio
+                        d3.min(d, function(d) { return minRatio;}), 
+                        d3.max(d, function(d) { return maxRatio; })
+                    ]);/**/
+                  /*color.domain([//used for the count
+                        d3.min(d, function(d) { return minCount;}), 
+                        d3.max(d, function(d) { return maxCount; })
+                    ]);/**/
+                          
+                    /*color.domain([//used for the pop
+                        d3.min(d, function(d) { return minPop;}), 
+                        d3.max(d, function(d) { return maxPop; })
+                    ]);/**/
+                          console.log(color.domain());
+                          //console.log(min + " " + max)
 
                           //Bind data and create one path per GeoJSON feature
                          svg.selectAll("path")
@@ -109,7 +144,7 @@
                              .style("fill", function(d) {
 
                                 //Get data value
-                                var value = d.properties.count; 
+                                var value = d.properties.ratio; //need to add a dropdown to select which value ratio/count/pop
 
                                 if (value) {
                                     //If value exists…
@@ -120,7 +155,7 @@
                                 }
 
                             }).on("mouseover", function(d, popData){
-                                return tooltip.transition().duration(500).style("opacity", 1.0).text(d.properties.NAME + ", police killings: " + d.properties.count + ", pop: " + d.properties.population);
+                                return tooltip.transition().duration(500).style("opacity", 1.0).text(d.properties.NAME + ", police killings: " + d.properties.count + ", pop: " + d.properties.population + ", ratio: " + d.properties.ratio);
                             })
                             .on("mousemove", function(d){
                                 return tooltip.style("top", event.pageY+20+"px").style("left",(event.pageX-10)+"px");
