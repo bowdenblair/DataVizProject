@@ -6,9 +6,6 @@
 	<script src="https://d3js.org/d3.v4.min.js"></script>
 
 	<style type="text/css">
-
-
-
 		body {
 			background-color: white;
 		}
@@ -16,12 +13,16 @@
 		svg {
 			background-color: gray;
 		}
-
-
-
 	</style>
 </head>
 <body>
+    
+    <select id = "dataSelect">
+        <option value="count">number of killings</option>
+        <option value="pop">state population</option>
+        <option value="ratio" selected="selected">count/population</option>
+    </select>
+    
 	<script type="text/javascript">
         //took the basic mercator projection demo and modified it.
 
@@ -52,7 +53,9 @@
 					.attr("height", h)
 					.call(zoom);
 
-       
+        //dropdown
+         var dataType = "ratio";
+        
        //put the original colors into a scaling website //https://gka.github.io/palettes/#colors="#fffac2","#fecc5c","#fd8d3c","#f04420","#b00026"|steps=20|bez=1|coL=1
         var color = d3.scaleQuantize()
     .range(['#fffac2','#ffefab','#ffe397','#ffd883','#ffcb72','#ffbe63','#ffb255','#ffa44a','#fe9741','#fc883a','#f97b35','#f46f30','#ef622d','#e8542a','#e04928','#d83c27','#cf2f26','#c52326','#ba1426','#b00026']);
@@ -70,9 +73,9 @@
                                   var pop = popData[j].Population;
                                   
                                   if(state == popState){
-                                      console.log(popState + " " + state + " " + pop);
+                                      //console.log(popState + " " + state + " " + pop);
                                       d[i].population = pop;
-                                      console.log(d[i]);
+                                      //console.log(d[i]);
                                       d[i].ratio = d[i].count/d[i].population*100;
                                       break;
                                   }
@@ -95,7 +98,7 @@
                               var count = d[i].count;
                               var pop = d[i].population;
                               var ratio = d[i].ratio;
-                              console.log(state + " " + pop);
+                              //console.log(state + " " + pop);
                               if(ratio >maxRatio) maxRatio = ratio;
                               if(ratio <minRatio) minRatio = ratio;
                               
@@ -116,23 +119,28 @@
                                   }
                               }
                           }
-                          //Set input domain for color scale
-                          //
+                    function makeViz(){
+                        d3.selectAll("svg > *").remove();
+                     //Set input domain for color scale
+                    if(dataType=="ratio"){
+                        color.domain([//used for the ratio
+                            d3.min(d, function(d) { return minRatio;}), 
+                            d3.max(d, function(d) { return maxRatio; })
+                        ]);/**/
+                    }
+                    if(dataType=="count"){
+                        color.domain([//used for the count
+                            d3.min(d, function(d) { return minCount;}), 
+                            d3.max(d, function(d) { return maxCount; })
+                    ]);}/**/
                     
-                    color.domain([//used for the ratio
-                        d3.min(d, function(d) { return minRatio;}), 
-                        d3.max(d, function(d) { return maxRatio; })
-                    ]);/**/
-                  /*color.domain([//used for the count
-                        d3.min(d, function(d) { return minCount;}), 
-                        d3.max(d, function(d) { return maxCount; })
-                    ]);/**/
-                          
-                    /*color.domain([//used for the pop
-                        d3.min(d, function(d) { return minPop;}), 
-                        d3.max(d, function(d) { return maxPop; })
-                    ]);/**/
-                          console.log(color.domain());
+                    if(dataType=="pop"){                          
+                        color.domain([//used for the pop
+                            d3.min(d, function(d) { return minPop;}), 
+                            d3.max(d, function(d) { return maxPop; })
+                        ]);}/**/
+                    
+                          //console.log(color.domain());
                           //console.log(min + " " + max)
 
                           //Bind data and create one path per GeoJSON feature
@@ -142,9 +150,19 @@
                              .append("path")
                              .attr("d", path)
                              .style("fill", function(d) {
-
+                             var value;
                                 //Get data value
-                                var value = d.properties.ratio; //need to add a dropdown to select which value ratio/count/pop
+                             console.log(d);
+                             if(dataType=="ratio"){
+                                value = d.properties.ratio;
+                            }
+                             if(dataType=="count"){
+                                value = d.properties.count;
+                             }
+                             if(dataType=="pop"){
+                                value = d.properties.population; 
+                             }/**/
+                             console.log(value);
 
                                 if (value) {
                                     //If value exists…
@@ -172,10 +190,18 @@
                                 .style("font-size", "14px")
                                 .style("z-index", "10")
                                 .style("opacity", 0);
+                              
+                          }
+                          makeViz();
+                          
+                          document.querySelector("#dataSelect").onchange = function(e){
+                                dataType = e.target.value;
+                                console.log(dataType);
+                                makeViz();
+                            }
                 });
             });
         });
-
 		function zooming() 
         {
             console.log("zooming");
@@ -188,5 +214,6 @@
 	
 	</script>
     <!-- <p>I took data from The guardians collection of police killing data called <a href = 'https://www.theguardian.com/us-news/ng-interactive/2015/jun/01/the-counted-police-killings-us-database'>"The Counted"</a> I decided to only use the 2016 data. I then used openrefine to get the counts of police killings in each state. I used the basic mercator projection demo and a map of the US separated by state to output that data with an expanded color range from <a href='https://gka.github.io/palettes/#colors="#fffac2","#fecc5c","#fd8d3c","#f04420","#b00026"|steps=20|bez=1|coL=1"'>this</a> website. I had to expand the color range because of the massive range of state values 1 from a number of states to 161 from CA. I used the chloropleth demo as a guide for how to do this. I made tooltips appear over each state displaying the count and the state's name. </p> -->
+    
 </body>
 </html>
