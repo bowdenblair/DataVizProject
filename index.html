@@ -11,7 +11,7 @@
 		}
 
 		svg {
-			background-color: gray;
+			background-color: white;
 		}
         #tooltiptwo {
             position: fixed;
@@ -63,14 +63,37 @@
         
         //GEOCODER
         geocoder = new google.maps.Geocoder();
-        
+        var coData;
+        var calculatedCData = [];
+        var dDataCpy;
+        var popDataCpy;
+        var jsonDataCpy;
+        var circles;
         
         //took the basic mercator projection demo and modified it.
 
 
 		//Width and height
 		var w = 800;
-		var h = 600;
+        var h = 600;
+        
+                               
+                    
+        //ratios       
+        var minRatio = 1;
+                          var maxRatio = 0;
+                          
+                          var minCount = 0;
+                          var maxCount = 0;
+                          
+                          var minPop = 0;
+                          var maxPop = 0;
+
+        //others
+        var state;
+        var count;
+        var pop;
+        var ratio;
 
 		//zoom
 		var zoom = d3.zoom()
@@ -102,10 +125,18 @@
             .range(['#fffac2','#ffefab','#ffe397','#ffd883','#ffcb72','#ffbe63','#ffb255','#ffa44a','#fe9741','#fc883a','#f97b35','#f46f30','#ef622d','#e8542a','#e04928','#d83c27','#cf2f26','#c52326','#ba1426','#b00026']);
         
         d3.csv("counts.csv", function(d){
+            dDataCpy = d;
             d3.csv("statePop.csv", function(popData){
+                popDataCpy = popData;
                     //var c = d3.nest().key(function(d){ return d.state; }).distinct(objects);
                 d3.csv("the-counted-2016.csv", function(cData)
                 {
+                    for(var i = 0; i < cData.length; i++)
+                        {
+                            cData[i].lat = 9999;
+                            cData[i].lng = 9999;
+                        }
+                        coData = cData;
                     //Load in GeoJSON data
                       d3.json("us.json", function(json) {
                           for(var i = 0; i < d.length; i++){
@@ -123,24 +154,13 @@
                                   }
                               }
                           }
-                       
-                    
-                          
-                          var minRatio = 1;
-                          var maxRatio = 0;
-                          
-                          var minCount = 0;
-                          var maxCount = 0;
-                          
-                          var minPop = 0;
-                          var maxPop = 0;
 
 
                           for(var i=0; i<d.length; i++){
-                              var state = d[i].state;
-                              var count = d[i].count;
-                              var pop = d[i].population;
-                              var ratio = d[i].ratio;
+                              state = d[i].state;
+                              count = d[i].count;
+                              pop = d[i].population;
+                              ratio = d[i].ratio;
                               //console.log(state + " " + pop);
                               if(ratio >maxRatio) maxRatio = ratio;
                               if(ratio <minRatio) minRatio = ratio;
@@ -162,7 +182,27 @@
                                   }
                               }
                           }
-                    function makeViz(){
+
+                          jsonDataCpy = json;
+                    
+                          makeViz(d, popData, cData, json, true);
+                          
+                          document.querySelector("#dataSelect").onchange = function(e){
+                                dataType = e.target.value;
+                                console.log(dataType);
+                                makeViz(d, popData, cData, json, true);
+                            }
+                    });
+                //d3.interval(placeCounted(cData[0]), 1500);
+                });
+            });
+        });
+            // ======= Global variable to remind us what to do next
+            var nextAddress = 0;
+                           // delay between geocode requests - at the time of writing, 100 miliseconds seems to work well
+                        var delay = 1000;
+            
+                        function makeViz(d, popData, cData, json, executeNext){
                         d3.selectAll("svg > *").remove();
                      //Set input domain for color scale
                     if(dataType=="ratio"){
@@ -236,62 +276,97 @@
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
                         
-                        for(var i = 0; i < cData.length; i++)
-                        {
-                            cData[i].lat = 9999;
-                            cData[i].lng = 9999;
-                        }
 
-                        
-                            var streetaddress = cData[4].streetaddress;
-                            var city = cData[4].city;
-                            var state = cData[4].state;
+                        if(executeNext) { theNext(); }
+                        else { placeCounted(cData); }
+
+                        }
+        
+        function theNext() {
+            
+            if (nextAddress < coData.length) {
+                console.log(delay);
+                setTimeout(function(){ createMapPoints(coData[nextAddress]); theNext(); }, delay);
+                nextAddress++;
+            }
+        }
+
+        function createMapPoints(cData){
+           
+                            var streetaddress = cData.streetaddress;
+                            var city = cData.city;
+                            var state = cData.state;
 
                             
-
+                            //placeCounted(cData);
                             var toGeocoder = streetaddress + ", " + city + ", " + state;
-                            geocoder.geocode( { 'address': toGeocoder}, function(results, status)
+                            geocoder.geocode( { 'address': toGeocoder }, function(results, status)
                             {
-                                console.log(status)
-                                if(status = google.maps.GeocoderStatus.OK)
+                                console.log(status);
+                                if(status == google.maps.GeocoderStatus.OK)
                                 {
                                     //console.log(results[0].geometry);
                                     var loc = [];
                                     loc[0]=results[0].geometry.location.lat();
                                     loc[1]=results[0].geometry.location.lng();
-                                    console.log(loc);
-                                    cData[4].lat = loc[0];
-                                    cData[4].lng = loc[1];
-                                    console.log(cData[4]);
-
+                                    //console.log(loc);
+                                    cData.lat = loc[0];
+                                    cData.lng = loc[1];
                                     console.log(cData);
-                                    for(var i = 0; i < cData.length; i++)
-                                    {
-                                        var aLat;
-                                        var bLat;
-                                        if(cData[i].lat != 9999) { aLat = cData[i].lat; }
-                                        if(cData[i].lng != 9999) { 
-                                            bLat = cData[i].lng;
-                                            console.log("----------------------------------------------------------------------");
-                                            var tLat = [bLat, aLat]
-                                            console.log(tLat);
+                                    calculatedCData.push(cData);
+                                    //placeCounted(cData);
+                                    console.log("success!");
+                                    
+                                }
+                                // ====== Decode the error status ======
+                                else {
+                                    // === if we were sending the requests to fast, try this one again and increase the delay
+                                    if (status == google.maps.GeocoderStatus.OVER_QUERY_LIMIT) {
+                                        nextAddress--;
+                                        delay++;
+                                        //console.log(status+" - try again!!!!");
+                                    } else {
+                                        console.log("Failed to put pt on map");
+                                    }   
+                                }
+
+                            });
+                        
+        }
+
+      // ======= Call that function for the first time =======
+     // theNext();
+
+
+		function zooming() 
+        {
+            //console.log("zooming");
+            svg.attr("transform", d3.event.transform);
+            svg.selectAll("circle")
+                .attr("d", projection(projection))
+                .attr("r", 1/zoom.scale());
+        }
+
+        function placeCounted(cData)
+        {
+            //console.log("----------------------------------------------------------------------");
+            //console.log(cData);
+                                            console.log(cData);
+                                            console.log("tring to draw...");
                                             svg.selectAll("circle")
-                                                .data([cData[i]]).enter()
+                                                .data(calculatedCData)
+                                                .enter()
                                                 .append("circle")
-                                                .attr("cx", function(c) { console.log("TLAT: " + projection([c.lng, c.lat])[0]); return projection([c.lng, c.lat])[0]; })
-                                                .attr("cy", function(c) { return projection([c.lng, c.lat])[1]; })
+                                                .attr("cx", function(cData) { console.log("----------------------------------------------------------------------"); /*console.log("TLAT: " + projection([c.lng, c.lat])[0]);*/ return projection([cData.lng, cData.lat])[0]; })
+                                                .attr("cy", function(cData) { return projection([cData.lng, cData.lat])[1]; })
                                                 .attr("r", 1)
-                                                .style("fill", "blue")
-                                                .style("stroke", "black")
+                                                .style("fill", "#779ecb")
                                                 .on("mouseover", function(c) {
                                                     var coords = [0, 0];
                                                     coords = d3.mouse(this);
+                                                
                                                     d3.select(this)
-                                                        .attr("fill", "#FFFFFF")
-                                                        .attr("stroke", "#000000")
-                                                        .attr("stroke-width", 2);
-
-                                                    console.log(c);
+                                                        .style("fill", "blue");
                                                     
                                                     d3.select("#tooltiptwo")
                                                         .select("#name")
@@ -319,37 +394,22 @@
                                                 })
                                                 .on("mouseout", function() {
                                                     d3.select(this)
-                                                    .attr("fill", "blue")
-                                                    .attr("stroke", "black")
+                                                    .style("fill", "#779ecb")
                                                     d3.select("#tooltiptwo").classed("hidden", true);
                                                 });
-                                        }
-                                    }
-                                }
-                            });
-
-                        
-                        }
-                          makeViz();
-                          
-                          document.querySelector("#dataSelect").onchange = function(e){
-                                dataType = e.target.value;
-                                console.log(dataType);
-                                makeViz();
-                            }
-                    });
-                });
-            });
-        });
-		function zooming() 
-        {
-            //console.log("zooming");
-            svg.attr("transform", d3.event.transform);
+                                            //calculatedCData = [];
+                                        console.log("done trying!");
         }
 
+        
 
-
-
+        d3.interval(function() {
+            if(calculatedCData.length < 1092)
+            {
+            d3.selectAll("svg > circle").remove();
+            placeCounted(coData[0]);
+            }
+        }, delay);
 	
 	</script>
     <!-- <p>I took data from The guardians collection of police killing data called <a href = 'https://www.theguardian.com/us-news/ng-interactive/2015/jun/01/the-counted-police-killings-us-database'>"The Counted"</a> I decided to only use the 2016 data. I then used openrefine to get the counts of police killings in each state. I used the basic mercator projection demo and a map of the US separated by state to output that data with an expanded color range from <a href='https://gka.github.io/palettes/#colors="#fffac2","#fecc5c","#fd8d3c","#f04420","#b00026"|steps=20|bez=1|coL=1"'>this</a> website. I had to expand the color range because of the massive range of state values 1 from a number of states to 161 from CA. I used the chloropleth demo as a guide for how to do this. I made tooltips appear over each state displaying the count and the state's name. </p> -->
